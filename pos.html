@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고려대 심리학부 주점 POS</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: #0d0d1a;
+  color: #e0e0e0;
+  min-height: 100vh;
+  user-select: none;
+}
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg, #12122a 0%, #1e1040 100%);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #3a2d80;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-brand { display: flex; flex-direction: column; }
+.header-title { font-size: 1.25rem; font-weight: 800; color: #d4a840; letter-spacing: -0.5px; }
+.header-sub { font-size: 0.75rem; color: #7060a8; margin-top: 1px; }
+
+.header-actions { display: flex; gap: 10px; align-items: center; }
+
+.hbtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.hbtn:hover { opacity: .85; transform: translateY(-1px); }
+.hbtn-settings { background: #231850; color: #c9a84c; border: 1px solid #4a3f90; }
+.hbtn-export  { background: #0f3020; color: #4ade80; border: 1px solid #1a6030; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  background: #111127;
+  border-bottom: 1px solid #222240;
+  padding: 12px 28px;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.stat {
+  flex: 1;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid #222240;
+}
+.stat:last-child { border-right: none; }
+
+.stat-label { font-size: 0.7rem; color: #666; margin-bottom: 4px; }
+.stat-val { font-size: 1.1rem; font-weight: 800; }
+.stat-val.green  { color: #34d399; }
+.stat-val.red    { color: #f87171; }
+.stat-val.blue   { color: #60a5fa; }
+.stat-val.yellow { color: #fbbf24; }
+.stat-val.purple { color: #c084fc; }
+
+/* ── TABLE GRID ── */
+.main { padding: 24px 28px; }
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ── TABLE CARD ── */
+.tcard {
+  background: #16162e;
+  border: 2px solid #242450;
+  border-radius: 18px;
+  padding: 14px 12px 12px;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+}
+
+.tcard:hover {
+  border-color: #4a3f90;
+  box-shadow: 0 6px 20px rgba(74,63,144,.35);
+  transform: translateY(-2px);
+}
+
+.tcard.occupied {
+  background: #1a140a;
+  border-color: #c9a840;
+  box-shadow: 0 0 12px rgba(201,168,64,.15);
+}
+
+.tcard.occupied:hover {
+  box-shadow: 0 6px 24px rgba(201,168,64,.35);
+}
+
+.tcard-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.tcard-num {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #d4a840;
+}
+
+.tcard-badge {
+  font-size: 0.65rem;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.badge-empty    { background: #0f2a1a; color: #34d399; }
+.badge-occupied { background: #2a1c00; color: #fbbf24; }
+
+.tcard-amount {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #60a5fa;
+}
+
+.tcard-time {
+  font-size: 0.7rem;
+  color: #a78bfa;
+  font-family: 'Courier New', monospace;
+  background: #1a1030;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+/* ── MODAL OVERLAY ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(3px);
+}
+.overlay.hidden { display: none; }
+
+/* ── ORDER MODAL ── */
+.order-modal {
+  background: #16162e;
+  border: 2px solid #3a2d80;
+  border-radius: 22px;
+  padding: 24px;
+  width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,.85);
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.modal-title { font-size: 1.3rem; font-weight: 800; color: #d4a840; }
+.modal-time  { font-size: 0.78rem; color: #a78bfa; margin-top: 3px; }
+
+.btn-x {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.btn-x:hover { color: #ccc; background: #222; }
+
+/* ── MENU LIST ── */
+.menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  background: #10102a;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.menu-name  { flex: 1; font-weight: 600; font-size: 0.92rem; }
+.menu-price { font-size: 0.78rem; color: #666; margin-right: 12px; white-space: nowrap; }
+
+.qty-ctrl { display: flex; align-items: center; gap: 8px; }
+
+.qbtn {
+  width: 28px; height: 28px;
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .15s;
+}
+.qbtn:hover { opacity: .8; }
+.qbtn.minus { background: #3a0f0f; color: #f87171; }
+.qbtn.plus  { background: #0f3020; color: #4ade80; }
+
+.qty-num { width: 26px; text-align: center; font-weight: 800; font-size: 0.95rem; }
+
+/* ── COUPON SECTION ── */
+.coupon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #10102a;
+  border: 1px solid #3a2a00;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.coupon-info .label { font-size: 0.88rem; font-weight: 700; color: #fbbf24; }
+.coupon-info .sub   { font-size: 0.7rem; color: #666; margin-top: 2px; }
+
+/* ── ORDER SUMMARY ── */
+.summary-box {
+  background: #0a0a1c;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 4px 0;
+  color: #888;
+}
+
+.summary-line.total-line {
+  border-top: 1px solid #222244;
+  margin-top: 10px;
+  padding-top: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #60a5fa;
+}
+
+/* ── ACTION BUTTONS ── */
+.action-row { display: flex; gap: 8px; }
+
+.abtn {
+  flex: 1;
+  padding: 12px 6px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.abtn:hover { opacity: .85; transform: translateY(-1px); }
+.abtn:active { transform: translateY(0); }
+
+.abtn-save  { background: #c9a840; color: #0d0d00; }
+.abtn-reset { background: #3a1010; color: #f87171; border: 1px solid #5a2020; }
+.abtn-clear { background: #101040; color: #818cf8; border: 1px solid #2a2a70; }
+
+/* ── SETTINGS MODAL ── */
+.settings-modal {
+  background: #16162e;
+  border: 2px solid #3a2d80;
+  border-radius: 22px;
+  padding: 24px;
+  width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,.85);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #1e1e3a;
+}
+.settings-row:last-child { border-bottom: none; }
+
+.settings-menu-name { font-weight: 600; font-size: 0.9rem; }
+.settings-menu-price { font-size: 0.75rem; color: #666; margin-top: 2px; }
+
+.cost-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cost-field label { font-size: 0.75rem; color: #666; }
+
+.cost-input {
+  width: 90px;
+  background: #0a0a1c;
+  border: 1px solid #3a2d80;
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: #e0e0e0;
+  font-size: 0.88rem;
+  text-align: right;
+  outline: none;
+}
+.cost-input:focus { border-color: #c9a840; }
+
+/* ── CONFIRM DIALOG ── */
+.confirm-box {
+  background: #1a1a38;
+  border: 2px solid #5a3f00;
+  border-radius: 18px;
+  padding: 28px 28px 20px;
+  width: 340px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,.85);
+}
+
+.confirm-icon  { font-size: 2.5rem; margin-bottom: 12px; }
+.confirm-title { font-size: 1.1rem; font-weight: 800; color: #fbbf24; margin-bottom: 8px; }
+.confirm-msg   { font-size: 0.85rem; color: #999; line-height: 1.5; margin-bottom: 20px; }
+
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns button { flex: 1; padding: 11px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 800; cursor: pointer; }
+.confirm-ok     { background: #c9a840; color: #0d0d00; }
+.confirm-cancel { background: #2a2a48; color: #888; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a1c; }
+::-webkit-scrollbar-thumb { background: #3a2d80; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-title">🍺 고려대 심리학부 주점</div>
+    <div class="header-sub">POS 시스템 · 카운터용</div>
+  </div>
+  <div class="header-actions">
+    <button class="hbtn hbtn-export" onclick="exportExcel()">📊 엑셀 출력</button>
+  </div>
+</div>
+
+<!-- ══ STATS BAR ══ -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-label">총 매출 (쿠폰 후)</div>
+    <div class="stat-val green" id="statRevenue">0원</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">쿠폰 할인 총액</div>
+    <div class="stat-val yellow" id="statCoupon">0원</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">메뉴 합계 (쿠폰 전)</div>
+    <div class="stat-val blue" id="statGross">0원</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">영업 중 / 전체</div>
+    <div class="stat-val purple" id="statOccupied">0 / 20</div>
+  </div>
+</div>
+
+<!-- ══ TABLE GRID ══ -->
+<div class="main">
+  <div class="table-grid" id="tableGrid"></div>
+</div>
+
+<!-- ══ ORDER MODAL ══ -->
+<div class="overlay hidden" id="orderOverlay">
+  <div class="order-modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="mTitle">테이블 1</div>
+        <div class="modal-time" id="mTime"></div>
+      </div>
+      <button class="btn-x" onclick="closeOrder()">✕</button>
+    </div>
+
+    <div class="menu-list" id="mMenuList"></div>
+
+    <div class="coupon-row">
+      <div class="coupon-info">
+        <div class="label">🎫 할인 쿠폰 사용</div>
+        <div class="sub">1장당 1,000원 할인</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qbtn minus" onclick="adjCoupon(-1)">−</button>
+        <span class="qty-num" id="mCouponNum">0</span>
+        <button class="qbtn plus"  onclick="adjCoupon(+1)">+</button>
+      </div>
+    </div>
+
+    <div class="summary-box">
+      <div class="summary-line">
+        <span>메뉴 합계</span>
+        <span id="mSubtotal">0원</span>
+      </div>
+      <div class="summary-line">
+        <span>쿠폰 할인</span>
+        <span id="mCouponDisc" style="color:#fbbf24;">0원</span>
+      </div>
+      <div class="summary-line total-line">
+        <span>청구 금액</span>
+        <span id="mTotal">0원</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="abtn abtn-save"  onclick="saveOrder()">✓ 주문 저장</button>
+      <button class="abtn abtn-reset" onclick="confirmReset()">↺ 주문 취소</button>
+      <button class="abtn abtn-clear" onclick="confirmClear()">🗑 자리 치움</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ CONFIRM MODAL ══ -->
+<div class="overlay hidden" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confIcon">⚠️</div>
+    <div class="confirm-title" id="confTitle">확인</div>
+    <div class="confirm-msg" id="confMsg"></div>
+    <div class="confirm-btns">
+      <button class="confirm-ok"     id="confOkBtn">확인</button>
+      <button class="confirm-cancel" onclick="closeConfirm()">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const MENUS = [
+  { name: '냉면',   price: 8000  },
+  { name: '닭강정', price: 10000 },
+  { name: '육회소', price: 16000 },
+  { name: '육회중', price: 24000 },
+  { name: '음료수', price: 2000  },
+  { name: '짜계치', price: 8000  },
+  { name: '콘치즈', price: 6000  },
+];
+
+// Accumulated totals from cleared tables
+let accumulated = { gross: 0, coupon: 0 };
+
+const tables = Array.from({ length: 20 }, (_, i) => ({
+  id: i + 1,
+  occupied: false,
+  startTime: null,
+  quantities: new Array(MENUS.length).fill(0),
+  coupons: 0,
+}));
+
+const orderLog = []; // completed/cleared order records
+
+// ── CURRENT MODAL STATE ──────────────────────────────────────────
+let activeId   = null;
+let tempQty    = [];
+let tempCoup   = 0;
+let modalTimer = null;
+
+// ── HELPERS ──────────────────────────────────────────────────────
+const fmt = n => n.toLocaleString('ko-KR') + '원';
+
+function elapsed(ts) {
+  if (!ts) return '00:00';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(sec).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function tableTotal(t) {
+  const sub = t.quantities.reduce((a, q, i) => a + q * MENUS[i].price, 0);
+  return Math.max(0, sub - t.coupons * 1000);
+}
+
+// ── STATS ────────────────────────────────────────────────────────
+function updateStats() {
+  // Start from accumulated (cleared tables) + currently active tables
+  let gross = accumulated.gross;
+  let couponSum = accumulated.coupon;
+  let occupied = 0;
+
+  tables.forEach(t => {
+    t.quantities.forEach((q, i) => { gross += q * MENUS[i].price; });
+    couponSum += t.coupons * 1000;
+    if (t.occupied) occupied++;
+  });
+
+  const netRevenue = gross - couponSum;
+
+  document.getElementById('statRevenue').textContent  = fmt(netRevenue);
+  document.getElementById('statCoupon').textContent   = fmt(couponSum);
+  document.getElementById('statGross').textContent    = fmt(gross);
+  document.getElementById('statOccupied').textContent = `${occupied} / 20`;
+}
+
+// ── TABLE GRID ───────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('tableGrid');
+  grid.innerHTML = '';
+  tables.forEach(t => {
+    const div = document.createElement('div');
+    div.className = `tcard${t.occupied ? ' occupied' : ''}`;
+    div.id = `tc${t.id}`;
+    div.onclick = () => openOrder(t.id);
+
+    const amt  = t.occupied ? tableTotal(t) : 0;
+    const time = t.occupied ? elapsed(t.startTime) : '';
+    const icon = t.occupied ? '🪑' : '🪑';
+
+    div.innerHTML = `
+      <div class="tcard-icon">${t.occupied ? '🍽' : '🪑'}</div>
+      <div class="tcard-num">${t.id}번</div>
+      <div class="tcard-badge ${t.occupied ? 'badge-occupied' : 'badge-empty'}">
+        ${t.occupied ? '영업 중' : '빈 자리'}
+      </div>
+      ${t.occupied ? `
+        <div class="tcard-amount">${fmt(amt)}</div>
+        <div class="tcard-time" id="tt${t.id}">⏱ ${time}</div>
+      ` : ''}
+    `;
+    grid.appendChild(div);
+  });
+  updateStats();
+}
+
+// ── TICK: update times ───────────────────────────────────────────
+setInterval(() => {
+  tables.forEach(t => {
+    if (t.occupied && t.startTime) {
+      const el = document.getElementById(`tt${t.id}`);
+      if (el) el.textContent = `⏱ ${elapsed(t.startTime)}`;
+    }
+  });
+  updateStats();
+  if (activeId !== null) updateModalTime();
+}, 1000);
+
+// ── ORDER MODAL ──────────────────────────────────────────────────
+function openOrder(id) {
+  activeId  = id;
+  const t   = tables[id - 1];
+  tempQty   = [...t.quantities];
+  tempCoup  = t.coupons;
+
+  document.getElementById('mTitle').textContent = `${id}번 테이블`;
+  updateModalTime();
+  renderModalMenus();
+  updateModalSummary();
+  document.getElementById('orderOverlay').classList.remove('hidden');
+}
+
+function updateModalTime() {
+  const t  = tables[activeId - 1];
+  const el = document.getElementById('mTime');
+  if (t.occupied && t.startTime) {
+    el.textContent = `⏱ 착석 시간: ${elapsed(t.startTime)}`;
+  } else {
+    el.textContent = t.occupied ? '' : '신규 주문';
+  }
+}
+
+function closeOrder() {
+  activeId = null;
+  document.getElementById('orderOverlay').classList.add('hidden');
+}
+
+function renderModalMenus() {
+  const list = document.getElementById('mMenuList');
+  list.innerHTML = '';
+  MENUS.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'menu-row';
+    row.innerHTML = `
+      <span class="menu-name">${m.name}</span>
+      <span class="menu-price">${fmt(m.price)}</span>
+      <div class="qty-ctrl">
+        <button class="qbtn minus" onclick="adjQty(${i},-1)">−</button>
+        <span class="qty-num" id="qn${i}">${tempQty[i]}</span>
+        <button class="qbtn plus"  onclick="adjQty(${i},+1)">+</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+  document.getElementById('mCouponNum').textContent = tempCoup;
+}
+
+function adjQty(i, delta) {
+  tempQty[i] = Math.max(0, tempQty[i] + delta);
+  document.getElementById(`qn${i}`).textContent = tempQty[i];
+  updateModalSummary();
+}
+
+function adjCoupon(delta) {
+  tempCoup = Math.max(0, tempCoup + delta);
+  document.getElementById('mCouponNum').textContent = tempCoup;
+  updateModalSummary();
+}
+
+function updateModalSummary() {
+  const sub  = tempQty.reduce((a, q, i) => a + q * MENUS[i].price, 0);
+  const disc = tempCoup * 1000;
+  const tot  = Math.max(0, sub - disc);
+  document.getElementById('mSubtotal').textContent  = fmt(sub);
+  document.getElementById('mCouponDisc').textContent = `-${fmt(disc)}`;
+  document.getElementById('mTotal').textContent     = fmt(tot);
+}
+
+function saveOrder() {
+  const t     = tables[activeId - 1];
+  const wasOk = t.occupied;
+  t.quantities = [...tempQty];
+  t.coupons    = tempCoup;
+
+  const hasAny = tempQty.some(q => q > 0);
+  if (hasAny && !wasOk) {
+    t.occupied  = true;
+    t.startTime = Date.now();
+  }
+  if (!hasAny) {
+    t.occupied  = false;
+    t.startTime = null;
+  }
+
+  renderGrid();
+  closeOrder();
+}
+
+// ── CONFIRM HELPER ───────────────────────────────────────────────
+function showConfirm(icon, title, msg, onOk) {
+  document.getElementById('confIcon').textContent  = icon;
+  document.getElementById('confTitle').textContent = title;
+  document.getElementById('confMsg').textContent   = msg;
+  document.getElementById('confOkBtn').onclick     = () => { closeConfirm(); onOk(); };
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.add('hidden');
+}
+
+function confirmReset() {
+  showConfirm(
+    '🔄', '주문 취소',
+    `${activeId}번 테이블의 주문 내역을 모두 초기화합니다.`,
+    () => {
+      const t      = tables[activeId - 1];
+      t.quantities = new Array(MENUS.length).fill(0);
+      t.coupons    = 0;
+      t.occupied   = false;
+      t.startTime  = null;
+      renderGrid();
+      closeOrder();
+    }
+  );
+}
+
+function confirmClear() {
+  showConfirm(
+    '🗑', '자리 치움',
+    `${activeId}번 테이블을 정리하고 빈 자리로 전환합니다.\n현재 주문은 매출에 누적됩니다.`,
+    () => {
+      const tt   = tables[activeId - 1];
+      const sub  = tempQty.reduce((a, q, i) => a + q * MENUS[i].price, 0);
+      const disc = tempCoup * 1000;
+      const tot  = Math.max(0, sub - disc);
+
+      if (sub > 0 || disc > 0) {
+        // Accumulate into global totals so stats survive the table reset
+        accumulated.gross  += sub;
+        accumulated.coupon += disc;
+
+        orderLog.push({
+          table:    activeId,
+          seated:   tt.startTime ? new Date(tt.startTime).toLocaleString('ko-KR') : '-',
+          cleared:  new Date().toLocaleString('ko-KR'),
+          duration: tt.startTime ? elapsed(tt.startTime) : '-',
+          items:    MENUS.map((m, i) => tempQty[i] > 0 ? `${m.name}×${tempQty[i]}` : '').filter(Boolean).join(', '),
+          subtotal: sub,
+          coupon:   disc,
+          total:    tot,
+        });
+      }
+
+      tt.quantities = new Array(MENUS.length).fill(0);
+      tt.coupons    = 0;
+      tt.occupied   = false;
+      tt.startTime  = null;
+      renderGrid();
+      closeOrder();
+    }
+  );
+}
+
+
+// ── EXCEL EXPORT ─────────────────────────────────────────────────
+function exportExcel() {
+  // Snapshot: completed (cleared) orders + currently active tables
+  const snapshot = orderLog.map(r => ({ ...r }));
+
+  tables.forEach(t => {
+    const sub = t.quantities.reduce((a, q, i) => a + q * MENUS[i].price, 0);
+    if (sub === 0 && t.coupons === 0) return;
+    const disc = t.coupons * 1000;
+    snapshot.push({
+      table:    t.id,
+      seated:   t.startTime ? new Date(t.startTime).toLocaleString('ko-KR') : '-',
+      cleared:  '(영업 중)',
+      duration: t.startTime ? elapsed(t.startTime) : '-',
+      items:    MENUS.map((m, i) => t.quantities[i] > 0 ? `${m.name}×${t.quantities[i]}` : '').filter(Boolean).join(', '),
+      subtotal: sub,
+      coupon:   disc,
+      total:    Math.max(0, sub - disc),
+    });
+  });
+
+  if (snapshot.length === 0) {
+    alert('출력할 주문 내역이 없습니다.');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── 주문 내역 시트
+  const detailRows = snapshot.map(r => ({
+    '테이블':    `${r.table}번`,
+    '착석 시각': r.seated,
+    '퇴석 시각': r.cleared,
+    '착석 시간': r.duration,
+    '주문 내역': r.items,
+    '메뉴 합계': r.subtotal,
+    '쿠폰 할인': r.coupon,
+    '청구 금액': r.total,
+  }));
+
+  const ws1 = XLSX.utils.json_to_sheet(detailRows);
+  ws1['!cols'] = [6,18,18,10,38,12,12,12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, '주문 내역');
+
+  // ── 매출 요약 시트
+  const totalSub    = snapshot.reduce((a, r) => a + r.subtotal, 0);
+  const totalCoupon = snapshot.reduce((a, r) => a + r.coupon,   0);
+  const totalRev    = snapshot.reduce((a, r) => a + r.total,    0);
+
+  const summaryRows = [
+    { '항목': '출력 일시',        '금액 (원)': new Date().toLocaleString('ko-KR') },
+    { '항목': '총 메뉴 합계',     '금액 (원)': totalSub    },
+    { '항목': '총 쿠폰 할인',     '금액 (원)': totalCoupon },
+    { '항목': '총 매출 (쿠폰 후)','금액 (원)': totalRev    },
+  ];
+
+  const ws2 = XLSX.utils.json_to_sheet(summaryRows);
+  ws2['!cols'] = [{ wch: 22 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, ws2, '매출 요약');
+
+  // ── 메뉴별 판매 수량 시트
+  const qtyMap = {};
+  MENUS.forEach(m => { qtyMap[m.name] = 0; });
+  snapshot.forEach(r => {
+    r.items.split(',').forEach(item => {
+      item = item.trim();
+      if (!item) return;
+      const match = item.match(/^(.+)×(\d+)$/);
+      if (match) qtyMap[match[1]] = (qtyMap[match[1]] || 0) + parseInt(match[2]);
+    });
+  });
+
+  const menuRows = MENUS.map(m => ({
+    '메뉴':      m.name,
+    '판매가':    m.price,
+    '판매 수량': qtyMap[m.name] || 0,
+    '매출 소계': (qtyMap[m.name] || 0) * m.price,
+  }));
+
+  const ws3 = XLSX.utils.json_to_sheet(menuRows);
+  ws3['!cols'] = [10, 10, 12, 12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws3, '메뉴별 집계');
+
+  const dateStr = new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g, '-').replace(/-$/, '');
+  XLSX.writeFile(wb, `고심주점_${dateStr}.xlsx`);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+renderGrid();
+</script>
+</body>
+</html>
