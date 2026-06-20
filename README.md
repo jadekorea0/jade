@@ -1,8 +1,8 @@
 # 🍶 심리학부 주점 POS
 
-고려대 심리학부 주점 카운터용 포스기. 프레임워크 없는 단일 `index.html` 파일이라 GitHub Pages에 그대로 올리면 바로 실행됩니다.
+고려대 심리학부 주점 카운터용 포스기. 프레임워크 없는 단일 `POS.html` 파일이라 GitHub Pages에 그대로 올리면 바로 실행됩니다.
 
-**데모(배포 후 주소)**: `https://jadekorea0.github.io/jade/`
+**데모(배포 후 주소)**: `https://jadekorea0.github.io/jade/POS.html`
 
 ## 기능
 - 1~20번 테이블 4열 배치, 테이블별 주문/합산
@@ -23,17 +23,16 @@
 1. GitHub 로그인 → 오른쪽 위 **＋** → **New repository**.
 2. 저장소 이름에 `jade` 입력 → **Public** 선택 → **Create repository**.
 3. 생성된 페이지에서 **uploading an existing file** 클릭.
-4. `POS.html`, `index.html`(과 원하면 `README.md`)을 드래그해서 올리고 **Commit changes**.
-   - `index.html`은 루트 주소(`.../jade/`) 자동 로드용, `POS.html`은 이름 지정 파일입니다(내용 동일).
+4. `POS.html`(과 원하면 `README.md`)을 드래그해서 올리고 **Commit changes**.
 5. 상단 **Settings → Pages** 이동.
 6. **Build and deployment → Source**를 **Deploy from a branch**로, Branch를 **main / (root)**로 두고 **Save**.
-7. 1~2분 후 같은 화면에 뜨는 `https://jadekorea0.github.io/jade/` 주소로 접속.
+7. 1~2분 후 `https://jadekorea0.github.io/jade/POS.html` 주소로 접속.
 
 ### 방법 B — 터미널(git)에서
 ```bash
 # 이 폴더에서 실행
 git init
-git add index.html POS.html README.md
+git add POS.html README.md
 git commit -m "주점 POS"
 git branch -M main
 git remote add origin https://github.com/jadekorea0/jade.git
