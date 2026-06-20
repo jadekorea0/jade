@@ -1,8 +1,8 @@
 # 🍶 심리학부 주점 POS
 
-고려대 심리학부 주점 카운터용 포스기. 프레임워크 없는 단일 `POS.html` 파일이라 GitHub Pages에 그대로 올리면 바로 실행됩니다.
+고려대 심리학부 주점 카운터용 포스기. 프레임워크 없는 단일 `index.html` 파일이라 GitHub Pages에 그대로 올리면 바로 실행됩니다.
 
-**데모(배포 후 주소)**: `https://jadekorea0.github.io/jade/POS.html`
+**데모(배포 후 주소)**: `https://jadekorea0.github.io/jade/index.html`
 
 ## 기능
 - 1~20번 테이블 4열 배치, 테이블별 주문/합산
@@ -26,13 +26,13 @@
 4. `POS.html`(과 원하면 `README.md`)을 드래그해서 올리고 **Commit changes**.
 5. 상단 **Settings → Pages** 이동.
 6. **Build and deployment → Source**를 **Deploy from a branch**로, Branch를 **main / (root)**로 두고 **Save**.
-7. 1~2분 후 `https://jadekorea0.github.io/jade/POS.html` 주소로 접속.
+7. 1~2분 후 `https://jadekorea0.github.io/jade/index.html` 주소로 접속.
 
 ### 방법 B — 터미널(git)에서
 ```bash
 # 이 폴더에서 실행
 git init
-git add POS.html README.md
+git add index.html README.md
 git commit -m "주점 POS"
 git branch -M main
 git remote add origin https://github.com/jadekorea0/jade.git
